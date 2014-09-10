@@ -1,0 +1,14 @@
+#!/bin/sh
+exec consul agent -config-file /consul/config/agent.json
+
+bin/proxy \
+  -database="metrics" \
+  -influxdb="10.28.0.147:8086" \
+  -logfile="" \
+  -normalize=true \
+  -username="operator" \
+  -password="operator123" \
+  -proxyhost="0.0.0.0" \
+  -proxyport="8096" \
+  -typesdb="/usr/share/collectd/types.db" \
+  -verbose=false

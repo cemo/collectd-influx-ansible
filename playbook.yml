@@ -1,0 +1,110 @@
+-
+  hosts: all
+  sudo: yes
+  handlers:
+    - name: restart collectd
+      service: >
+        name=collectd
+        state=restarted
+  tasks:
+    - name: Set up locale
+      locale_gen: >
+        name=en_US.UTF-8
+        state=present
+
+    - name: Install required apt packages
+      apt: >
+        pkg={{ item }}
+        state=present
+        update_cache=yes
+      with_items:
+        - git
+        - zsh
+        - runit
+        - collectd
+        - collectd-utils
+
+    - name: Add hero user
+      user: name=hero shell=/bin/zsh uid=1111
+
+    - name: Add hero group
+      group: name=hero gid=1111
+
+    - name: Pull down oh-my-zsh for hero user
+      git: >
+        repo=git://github.com/robbyrussell/oh-my-zsh.git
+        dest=/home/hero/.oh-my-zsh
+        accept_hostkey=yes
+        update=no
+      sudo_user: hero
+
+    - name: Add .zshrc for hero user
+      copy: >
+        src=files/zshrc dest=/home/hero/.zshrc
+        owner=hero
+        group=hero
+
+    - name: Creates .ssh directory for hero user
+      file: path=/home/hero/.ssh state=directory
+      sudo_user: hero
+
+    - name: Give hero user passwordless sudo
+      lineinfile: "dest=/etc/sudoers insertafter=EOF line='hero ALL=(ALL) NOPASSWD: ALL' regexp='hero' state=present"
+
+    - name: Download public keys to hero user
+      get_url: >
+        url=https://gist.githubusercontent.com/dansowter/191939ada652a728cf91/raw/08f14cebfc124362ba698124e87f1a74f96f2dfd/daniels_everydayhero_public_key
+        dest=/home/hero/.ssh/authorized_keys
+        mode=0600
+      sudo_user: hero
+
+    - name: Download the Go tarball
+      get_url: >
+        url=https://storage.googleapis.com/golang/go1.3.1.linux-amd64.tar.gz
+        dest=/usr/local/src/go1.3.1.linux-amd64.tar.gz
+        sha256sum=578c4749f0f0f6c9e0a0da8ba6129750f03f5ca6d90e77774376a6f2da5fa77e
+      register: go_tarball_download
+
+    - name: Extract the Go tarball
+      command: tar -C /usr/local -xf /usr/local/src/go1.3.1.linux-amd64.tar.gz
+      when: go_tarball_download.changed
+
+    - name: Clone collectd proxy
+      git: >
+        repo=https://github.com/hoonmin/influxdb-collectd-proxy.git
+        dest=/tmp/influxdb-collectd-proxy
+        accept_hostkey=yes
+        update=no
+
+    - name: Make collectd proxy
+      command: >
+        make
+        chdir=/tmp/influxdb-collectd-proxy
+        creates=/tmp/influxdb-collectd-proxy/bin/proxy
+      environment:
+          PATH: /usr/local/go/bin:{{ ansible_env.PATH }}
+
+    - name: Update collectd config
+      copy: >
+        src=files/collectd.conf
+        dest=/etc/collectd/collectd.conf
+      notify:
+        - restart collectd
+
+    # - name: Create service folder for collectd
+    #   file: >
+    #     state=directory
+    #     path=/etc/service/collectd
+    #     owner=root
+    #     group=root
+
+    # - name: Link collectd service run definition
+    #   copy: >
+    #     src=files/run_collectd
+    #     dest=/etc/service/collectd/run
+    #     owner=root
+    #     group=root
+    #     state=link
+    #     mode=0555
+    #   notify:
+    #     - restart collectd

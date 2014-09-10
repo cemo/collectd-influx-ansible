@@ -1,0 +1,12 @@
+export ZSH=$HOME/.oh-my-zsh
+ZSH_THEME="robbyrussell"
+DISABLE_AUTO_UPDATE="true"
+DISABLE_CORRECTION="true"
+plugins=(git history-substring-search)
+
+source $ZSH/oh-my-zsh.sh
+
+export PATH=$HOME/bin:/usr/local/bin:/usr/local/go/bin:$PATH
+export LANG=en_US.UTF-8
+export EDITOR='vim'
+export PROMPT='%{$fg_bold[green]%}%M %{$fg_bold[red]%}➜ %{$fg_bold[green]%}%p %{$fg[cyan]%}%c %{$fg_bold[blue]%}$(git_prompt_info)%{$fg_bold[blue]%} % %{$reset_color%}'
